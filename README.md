@@ -1,95 +1,36 @@
 # Medical Image Segmentation
 
-Production segmentation pipeline: UNet++, DeepLabV3+, SegFormer on medical imaging datasets
+Binary segmentation for medical images with UNet++ and DeepLabV3+ from
+segmentation-models-pytorch, a Dice plus BCE loss, and Dice as the metric. This
+is the setup you reach for on masks like lung fields, polyps or lesions.
 
-`segmentation` `medical-ai` `unet` `deeplab` `pytorch`
+## Your own data
 
-## Overview
+Put images and masks in two folders with matching filenames and point the
+trainer at them:
 
-This repository implements a complete pipeline for **medical image segmentation**, covering
-data preprocessing, model training, evaluation, and deployment.
-
-## Features
-
-- Clean, modular PyTorch implementation
-- Reproducible experiments with MLflow tracking
-- Comprehensive evaluation with standard benchmarks
-- ONNX export for production deployment
-- Detailed documentation and usage examples
-
-## Installation
-
-```bash
-git clone https://github.com/YOUR_USERNAME/medical-image-segmentation.git
-cd medical-image-segmentation
+```
 pip install -r requirements.txt
+python src/train.py --images data/images --masks data/masks --arch unetplusplus --encoder resnet34 --epochs 30
 ```
 
-## Quick Start
+Any binary medical mask set in that layout works, chest X-ray lung masks for
+instance.
 
-```python
-from src.model import Model
-from src.trainer import Trainer
-from src.config import Config
+## What is inside
 
-config = Config.from_yaml("configs/default.yaml")
-model = Model(config)
-trainer = Trainer(model, config)
-trainer.train()
-```
+`model.py` builds UNet++, DeepLabV3+ or plain UNet over a choice of encoders.
+`losses.py` has the Dice plus BCE loss and the Dice metric. `dataset.py` reads
+paired image and mask folders, and it can also generate synthetic shapes so the
+pipeline is testable with nothing to download. `train.py` is the loop with a
+Dice validation and best checkpoint saving.
 
-## Project Structure
+## Tests
 
 ```
-medical-image-segmentation/
-├── src/
-│   ├── model.py        # Model architecture
-│   ├── dataset.py      # Data loading and preprocessing
-│   ├── trainer.py      # Training loop
-│   ├── evaluate.py     # Evaluation metrics
-│   └── utils.py        # Helper utilities
-├── configs/
-│   └── default.yaml    # Default configuration
-├── notebooks/
-│   └── exploration.ipynb
-├── tests/
-│   └── test_model.py
-├── requirements.txt
-└── README.md
+pytest tests/ -q
 ```
 
-## Results
-
-| Model | Dataset | Metric | Score |
-|-------|---------|--------|-------|
-| Baseline | Standard | Primary | - |
-| Ours | Standard | Primary | - |
-
-## Usage
-
-```bash
-# Train
-python train.py --config configs/default.yaml
-
-# Evaluate
-python evaluate.py --checkpoint checkpoints/best.pth
-
-# Export to ONNX
-python export.py --checkpoint checkpoints/best.pth
-```
-
-## References
-
-- Relevant papers and resources for medical image segmentation
-
-## License
-
-MIT
-
-# update 2
-
-# update 8
-
-# update 9
-
-# update 10
+The tests build both architectures, confirm Dice is 1.0 on a perfect mask and
+near zero on an inverted one, and check that the loss actually goes down over a
+few real steps on the synthetic shapes.

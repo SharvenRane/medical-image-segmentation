@@ -1,49 +1,23 @@
-"""
-Medical Image Segmentation - Model Architecture
-"""
-import torch
-import torch.nn as nn
-import timm
-from einops import rearrange
+"""Segmentation model factory: UNet++ and DeepLabV3+ via segmentation-models-pytorch."""
+from __future__ import annotations
+
+import segmentation_models_pytorch as smp
+
+ARCHS = {
+    "unetplusplus": smp.UnetPlusPlus,
+    "deeplabv3plus": smp.DeepLabV3Plus,
+    "unet": smp.Unet,
+}
 
 
-class MedicalImageSegmentation(nn.Module):
-    """
-    Main model for medical image segmentation.
-    """
-
-    def __init__(self, config):
-        super().__init__()
-        self.config = config
-        self.encoder = timm.create_model(
-            config.backbone,
-            pretrained=config.pretrained,
-            features_only=True
-        )
-        self.head = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Flatten(),
-            nn.Linear(self.encoder.feature_info[-1]["num_chs"], config.num_classes)
-        )
-
-    def forward(self, x):
-        features = self.encoder(x)
-        out = self.head(features[-1])
-        return out
-
-    def extract_features(self, x):
-        features = self.encoder(x)
-        pooled = nn.functional.adaptive_avg_pool2d(features[-1], 1)
-        return pooled.flatten(1)
-
-
-def build_model(config):
-    model = MedicalImageSegmentation(config)
-    if config.get("checkpoint"):
-        state = torch.load(config.checkpoint, map_location="cpu")
-        model.load_state_dict(state["model"])
-    return model
-
-# update 4
-
-# update 14
+def build_model(arch: str = "unetplusplus", encoder: str = "resnet34",
+                in_channels: int = 1, classes: int = 1):
+    """Binary medical segmentation by default (1 input channel, 1 mask channel)."""
+    if arch not in ARCHS:
+        raise KeyError(f"unknown arch '{arch}', options: {list(ARCHS)}")
+    return ARCHS[arch](
+        encoder_name=encoder,
+        encoder_weights="imagenet" if in_channels == 3 else None,
+        in_channels=in_channels,
+        classes=classes,
+    )
